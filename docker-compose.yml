@@ -1,0 +1,176 @@
+# Orbital Telemetry Platform — full local stack
+# Infra: docker compose up -d mongo redis cassandra neo4j kafka prometheus grafana
+# Everything (incl. app services): docker compose --profile apps up -d --build
+
+services:
+  # ─── MongoDB (document store: telemetry packets) ──────────────────────────
+  mongo:
+    image: mongo:8.0
+    container_name: otp-mongo
+    ports: ["27017:27017"]
+    volumes: ["mongo-data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis (key-value: live health, alerts pub/sub, rate-limit) ───────────
+  redis:
+    image: redis:7.4-alpine
+    container_name: otp-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Cassandra (wide-column: time-series telemetry) ───────────────────────
+  cassandra:
+    image: cassandra:5.0
+    container_name: otp-cassandra
+    ports: ["9042:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: otp-cluster
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 128M
+    volumes: ["cassandra-data:/var/lib/cassandra"]
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces' || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  # ─── Neo4j (graph: component dependency / fault tree) ─────────────────────
+  neo4j:
+    image: neo4j:5.26-community
+    container_name: otp-neo4j
+    ports: ["7474:7474", "7687:7687"]
+    environment:
+      NEO4J_AUTH: neo4j/password123
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes: ["neo4j-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ─── Kafka (KRaft mode, single broker, no Zookeeper) ──────────────────────
+  kafka:
+    image: bitnami/kafka:3.9
+    container_name: otp-kafka
+    ports: ["9092:9092"]
+    environment:
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:29092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,EXTERNAL://localhost:29092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes: ["kafka-data:/bitnami/kafka"]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ─── Prometheus (metrics scrape) ──────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: otp-prometheus
+    ports: ["9090:9090"]
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  # ─── Grafana (dashboards) ─────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: otp-grafana
+    ports: ["3001:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+
+  # ─── Application services (profile: apps) ─────────────────────────────────
+  ingestion-service:
+    build: { context: ., dockerfile: services/ingestion-service/Dockerfile }
+    container_name: otp-ingestion
+    profiles: ["apps"]
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      REDIS_URL: redis://redis:6379
+      CASSANDRA_CONTACT_POINTS: cassandra
+      NEO4J_URI: bolt://neo4j:7687
+      KAFKA_BROKERS: kafka:9092
+    ports: ["9101:9101"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      cassandra: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+
+  api-service:
+    build: { context: ., dockerfile: services/api-service/Dockerfile }
+    container_name: otp-api
+    profiles: ["apps"]
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      REDIS_URL: redis://redis:6379
+      CASSANDRA_CONTACT_POINTS: cassandra
+      NEO4J_URI: bolt://neo4j:7687
+    ports: ["4000:4000"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+
+  alert-service:
+    build: { context: ., dockerfile: services/alert-service/Dockerfile }
+    container_name: otp-alert
+    profiles: ["apps"]
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:9092
+    ports: ["4100:4100"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+
+  satellite-simulator:
+    build: { context: ., dockerfile: services/satellite-simulator/Dockerfile }
+    container_name: otp-simulator
+    profiles: ["apps"]
+    env_file: .env
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka: { condition: service_healthy }
+
+volumes:
+  mongo-data:
+  redis-data:
+  cassandra-data:
+  neo4j-data:
+  kafka-data:

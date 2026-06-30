@@ -1,0 +1,41 @@
+{
+  "name": "orbital-telemetry-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-model NoSQL satellite telemetry platform (MongoDB + Redis + Cassandra + Neo4j + Kafka)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "services/shared",
+    "services/ingestion-service",
+    "services/api-service",
+    "services/alert-service",
+    "services/satellite-simulator"
+  ],
+  "scripts": {
+    "seed": "node scripts/seed-all.js",
+    "seed:mongo": "node scripts/seed-mongo.js",
+    "seed:neo4j": "node scripts/seed-neo4j.js",
+    "seed:cassandra": "node scripts/seed-cassandra.js",
+    "infra:up": "docker compose up -d mongo redis cassandra neo4j kafka prometheus grafana",
+    "infra:down": "docker compose down",
+    "dev:ingestion": "npm --workspace services/ingestion-service run dev",
+    "dev:api": "npm --workspace services/api-service run dev",
+    "dev:alert": "npm --workspace services/alert-service run dev",
+    "dev:sim": "npm --workspace services/satellite-simulator run dev",
+    "test": "vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@otp/shared": "*",
+    "bcryptjs": "^2.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.8"
+  }
+}

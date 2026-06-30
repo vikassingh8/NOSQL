@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <marker id="da" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .lbl{font-size:12px;font-weight:600;fill:#0f172a}
+      .sub{font-size:10px;fill:#475569}
+      .edge{stroke:#475569;stroke-width:1.5;fill:none}
+    </style>
+  </defs>
+  <rect x="0" y="0" width="900" height="600" fill="#ffffff"/>
+  <text x="450" y="30" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Deployment Architecture — Azure (target)</text>
+
+  <!-- Azure boundary -->
+  <rect x="40" y="60" width="640" height="500" rx="14" fill="#f0f7ff" stroke="#0078d4" stroke-width="2"/>
+  <text x="60" y="86" font-size="13" font-weight="700" fill="#0078d4">Microsoft Azure</text>
+
+  <!-- Container Apps Environment -->
+  <rect x="70" y="110" width="300" height="210" rx="10" fill="#eef2ff" stroke="#4f46e5"/>
+  <text x="86" y="132" class="lbl" fill="#4f46e5">Container Apps Environment</text>
+  <g>
+    <rect x="90"  y="146" width="120" height="46" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="150" y="174" text-anchor="middle" class="lbl">api-service</text>
+    <rect x="230" y="146" width="120" height="46" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="290" y="174" text-anchor="middle" class="lbl">ingestion</text>
+    <rect x="90"  y="206" width="120" height="46" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="150" y="234" text-anchor="middle" class="lbl">alert-service</text>
+    <rect x="230" y="206" width="120" height="46" rx="8" fill="#dcfce7" stroke="#16a34a"/>
+    <text x="290" y="234" text-anchor="middle" class="lbl">simulator</text>
+  </g>
+  <text x="86" y="290" class="sub">scale-to-zero · consumption tier</text>
+
+  <!-- Data services (right) -->
+  <g fill="#ede9fe" stroke="#7c3aed">
+    <path d="M430,120 a60,9 0 0 1 120,0 v40 a60,9 0 0 1 -120,0 z"/><ellipse cx="490" cy="120" rx="60" ry="9"/>
+    <path d="M430,205 a60,9 0 0 1 120,0 v40 a60,9 0 0 1 -120,0 z"/><ellipse cx="490" cy="205" rx="60" ry="9"/>
+    <path d="M430,290 a60,9 0 0 1 120,0 v40 a60,9 0 0 1 -120,0 z"/><ellipse cx="490" cy="290" rx="60" ry="9"/>
+  </g>
+  <text x="490" y="142" text-anchor="middle" class="lbl">Cosmos DB</text>
+  <text x="490" y="156" text-anchor="middle" class="sub">Mongo API</text>
+  <text x="490" y="227" text-anchor="middle" class="lbl">Cosmos DB</text>
+  <text x="490" y="241" text-anchor="middle" class="sub">Cassandra API</text>
+  <text x="490" y="312" text-anchor="middle" class="lbl">Cache for Redis</text>
+
+  <!-- Key Vault / Monitor / Budget -->
+  <rect x="70"  y="340" width="130" height="56" rx="8" fill="#fef9c3" stroke="#ca8a04"/>
+  <text x="135" y="364" text-anchor="middle" class="lbl">Key Vault</text>
+  <text x="135" y="380" text-anchor="middle" class="sub">secrets · TLS</text>
+  <rect x="220" y="340" width="170" height="56" rx="8" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="305" y="364" text-anchor="middle" class="lbl">Log Analytics</text>
+  <text x="305" y="380" text-anchor="middle" class="sub">+ App Insights</text>
+  <rect x="410" y="340" width="140" height="56" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="480" y="364" text-anchor="middle" class="lbl">Cost Budget</text>
+  <text x="480" y="380" text-anchor="middle" class="sub">email alerts</text>
+
+  <!-- Neo4j Aura (external) -->
+  <g fill="#ecfeff" stroke="#0891b2">
+    <path d="M720,200 a60,9 0 0 1 120,0 v40 a60,9 0 0 1 -120,0 z"/><ellipse cx="780" cy="200" rx="60" ry="9"/>
+  </g>
+  <text x="780" y="224" text-anchor="middle" class="lbl">Neo4j Aura</text>
+  <text x="780" y="262" text-anchor="middle" class="sub">managed graph (free tier)</text>
+
+  <!-- edges -->
+  <path d="M370,180 L428,140" class="edge" marker-end="url(#da)"/>
+  <path d="M370,210 L428,222" class="edge" marker-end="url(#da)"/>
+  <path d="M370,235 L428,300" class="edge" marker-end="url(#da)"/>
+  <path d="M550,215 L718,212" class="edge" marker-end="url(#da)"/>
+  <path d="M180,320 L150,338" class="edge" marker-end="url(#da)"/>
+  <path d="M300,320 L305,338" class="edge" marker-end="url(#da)"/>
+
+  <text x="700" y="470" font-size="11" fill="#475569">IaC: infra/terraform (primary) · infra/bicep (alternative)</text>
+  <text x="700" y="490" font-size="11" fill="#475569">CI/CD: GitHub Actions → build images → deploy</text>
+</svg>

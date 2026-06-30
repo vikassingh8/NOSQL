@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 640" font-family="Segoe UI, system-ui, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowDot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#dc2626"/>
+    </marker>
+    <style>
+      .lbl{font-size:13px;font-weight:600;fill:#0f172a}
+      .sub{font-size:11px;fill:#475569}
+      .tier{font-size:12px;font-weight:700;fill:#64748b;letter-spacing:1px}
+      .edge{stroke:#475569;stroke-width:1.6;fill:none}
+      .edgeR{stroke:#16a34a;stroke-width:1.6;fill:none}
+      .edgeA{stroke:#d97706;stroke-width:1.6;fill:none}
+      .dot{stroke:#dc2626;stroke-width:1.4;fill:none;stroke-dasharray:4 3}
+      .elbl{font-size:10px;fill:#334155}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="900" height="640" fill="#ffffff"/>
+  <text x="450" y="28" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Orbital Telemetry — Logical Architecture</text>
+
+  <!-- Tier labels -->
+  <text x="20" y="84" class="tier">INGEST</text>
+  <text x="20" y="232" class="tier">STORE</text>
+  <text x="20" y="392" class="tier">SERVE</text>
+  <text x="20" y="542" class="tier">CLIENTS</text>
+
+  <!-- INGEST row -->
+  <g>
+    <rect x="90"  y="58" width="140" height="50" rx="10" fill="#e0f2fe" stroke="#0284c7"/>
+    <text x="160" y="80" text-anchor="middle" class="lbl">Satellite</text>
+    <text x="160" y="96" text-anchor="middle" class="lbl">Simulator</text>
+
+    <rect x="280" y="58" width="150" height="50" rx="10" fill="#e0f2fe" stroke="#0284c7"/>
+    <text x="355" y="80" text-anchor="middle" class="lbl">Kafka</text>
+    <text x="355" y="96" text-anchor="middle" class="sub">telemetry.raw</text>
+
+    <rect x="480" y="58" width="160" height="50" rx="10" fill="#e0f2fe" stroke="#0284c7"/>
+    <text x="560" y="80" text-anchor="middle" class="lbl">Ingestion Service</text>
+    <text x="560" y="96" text-anchor="middle" class="sub">validate · anomaly</text>
+
+    <rect x="690" y="58" width="150" height="50" rx="10" fill="#e0f2fe" stroke="#0284c7"/>
+    <text x="765" y="80" text-anchor="middle" class="lbl">Kafka</text>
+    <text x="765" y="96" text-anchor="middle" class="sub">telemetry.alerts</text>
+  </g>
+  <line x1="230" y1="83" x2="278" y2="83" class="edge" marker-end="url(#arrow)"/>
+  <line x1="430" y1="83" x2="478" y2="83" class="edge" marker-end="url(#arrow)"/>
+  <line x1="640" y1="83" x2="688" y2="83" class="edgeA" marker-end="url(#arrow)"/>
+  <text x="664" y="76" class="elbl">breach</text>
+
+  <!-- STORE row (DB cylinders) -->
+  <g fill="#ede9fe" stroke="#7c3aed">
+    <path d="M70,220 a70,10 0 0 1 140,0 v44 a70,10 0 0 1 -140,0 z"/>
+    <ellipse cx="140" cy="220" rx="70" ry="10"/>
+    <path d="M280,220 a70,10 0 0 1 140,0 v44 a70,10 0 0 1 -140,0 z"/>
+    <ellipse cx="350" cy="220" rx="70" ry="10"/>
+    <path d="M490,220 a70,10 0 0 1 140,0 v44 a70,10 0 0 1 -140,0 z"/>
+    <ellipse cx="560" cy="220" rx="70" ry="10"/>
+    <path d="M700,220 a70,10 0 0 1 140,0 v44 a70,10 0 0 1 -140,0 z"/>
+    <ellipse cx="770" cy="220" rx="70" ry="10"/>
+  </g>
+  <text x="140" y="246" text-anchor="middle" class="lbl">MongoDB</text>
+  <text x="140" y="262" text-anchor="middle" class="sub">documents</text>
+  <text x="350" y="246" text-anchor="middle" class="lbl">Cassandra</text>
+  <text x="350" y="262" text-anchor="middle" class="sub">time-series</text>
+  <text x="560" y="246" text-anchor="middle" class="lbl">Redis</text>
+  <text x="560" y="262" text-anchor="middle" class="sub">live health</text>
+  <text x="770" y="246" text-anchor="middle" class="lbl">Neo4j</text>
+  <text x="770" y="262" text-anchor="middle" class="sub">fault tree</text>
+
+  <!-- Ingestion -> stores (write) -->
+  <path d="M540,108 L150,210" class="edge" marker-end="url(#arrow)"/>
+  <path d="M555,108 L350,210" class="edge" marker-end="url(#arrow)"/>
+  <path d="M575,108 L560,210" class="edge" marker-end="url(#arrow)"/>
+  <text x="300" y="160" class="elbl">write log / TS / health</text>
+
+  <!-- SERVE row -->
+  <rect x="250" y="360" width="180" height="56" rx="10" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="340" y="384" text-anchor="middle" class="lbl">API Service</text>
+  <text x="340" y="402" text-anchor="middle" class="sub">JWT · RBAC · rate-limit</text>
+
+  <rect x="520" y="360" width="180" height="56" rx="10" fill="#dcfce7" stroke="#16a34a"/>
+  <text x="610" y="384" text-anchor="middle" class="lbl">Alert Service</text>
+  <text x="610" y="402" text-anchor="middle" class="sub">threshold · WS / SSE</text>
+
+  <!-- stores -> API (read) -->
+  <path d="M140,278 L320,358" class="edgeR" marker-end="url(#arrow)"/>
+  <path d="M350,278 L335,358" class="edgeR" marker-end="url(#arrow)"/>
+  <path d="M560,278 L360,358" class="edgeR" marker-end="url(#arrow)"/>
+  <path d="M770,278 L380,358" class="edgeR" marker-end="url(#arrow)"/>
+  <text x="150" y="330" class="elbl" fill="#16a34a">read</text>
+
+  <!-- kafka alerts -> alert service -->
+  <path d="M765,108 L640,358" class="edgeA" marker-end="url(#arrow)"/>
+  <!-- alert service -> mongo persist -->
+  <path d="M540,360 L180,272" class="edgeA" marker-end="url(#arrow)"/>
+  <text x="430" y="300" class="elbl" fill="#d97706">persist alert</text>
+
+  <!-- CLIENTS row -->
+  <rect x="250" y="510" width="180" height="56" rx="10" fill="#fef3c7" stroke="#d97706"/>
+  <text x="340" y="534" text-anchor="middle" class="lbl">React Dashboard</text>
+  <text x="340" y="552" text-anchor="middle" class="sub">health · charts · alerts</text>
+
+  <rect x="520" y="510" width="220" height="56" rx="10" fill="#fee2e2" stroke="#dc2626"/>
+  <text x="630" y="534" text-anchor="middle" class="lbl">Prometheus + Grafana</text>
+  <text x="630" y="552" text-anchor="middle" class="sub">metrics · dashboards</text>
+
+  <!-- API/Alert -> dashboard -->
+  <path d="M340,416 L340,508" class="edgeR" marker-end="url(#arrow)"/>
+  <path d="M560,416 L420,508" class="edgeA" marker-end="url(#arrow)"/>
+  <text x="455" y="468" class="elbl" fill="#d97706">WS push</text>
+
+  <!-- services -> monitoring (dotted) -->
+  <path d="M430,400 L590,512" class="dot" marker-end="url(#arrowDot)"/>
+  <path d="M700,402 L660,508" class="dot" marker-end="url(#arrowDot)"/>
+  <text x="560" y="452" class="elbl" fill="#dc2626">/metrics</text>
+</svg>
