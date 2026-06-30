@@ -8,13 +8,10 @@ analytics + real-time alerts to a mission-control dashboard.
 > included and ready to deploy later. See `docs/capstone-report.md` for the full write-up.
 
 ## Architecture at a glance
-```
-simulator → Kafka → ingestion (validate + anomaly) → MongoDB | Cassandra | Redis
-                                   └── alerts → alert-service → WebSocket → dashboard
-api-service (JWT/RBAC) → MongoDB | Cassandra | Redis | Neo4j → React dashboard
-all services → Prometheus → Grafana
-```
-Diagrams: `docs/architecture/README.md` · Schemas: `docs/schemas/README.md`
+
+![Logical architecture](docs/architecture/logical-architecture.svg)
+
+More diagrams: `docs/architecture/README.md` · Schemas: `docs/schemas/README.md`
 
 ## Tech stack
 Node.js 22 · Express 5 · MongoDB 8 · Redis 7 · Cassandra 5 · Neo4j 5 · Kafka (KRaft) ·
