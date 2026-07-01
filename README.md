@@ -12,6 +12,7 @@ analytics + real-time alerts to a mission-control dashboard.
 ![Logical architecture](docs/architecture/logical-architecture.svg)
 
 More diagrams: `docs/architecture/README.md` · Schemas: `docs/schemas/README.md`
+· ✅ [Requirements compliance](docs/requirements-compliance.md)
 
 ## Tech stack
 Node.js 22 · Express 5 · MongoDB 8 · Redis 7 · Cassandra 5 · Neo4j 5 · Kafka (KRaft) ·
