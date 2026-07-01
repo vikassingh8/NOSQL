@@ -40,10 +40,12 @@ export function evaluate(packet) {
   let message = null;
 
   if (t) {
+    // `critical` may be an upper bound (temperature 90, pressure 110) or a lower
+    // bound (battery 20, voltage 20, signal -100). Infer the direction from the
+    // nominal range so low-critical sensors aren't wrongly flagged.
+    const highCritical = t.critical >= t.max;
     const breachesCritical =
-      (t.critical !== undefined && t.unit !== '%' && value >= t.critical) ||
-      (t.unit === '%' && value <= t.critical) ||
-      (type === 'signal' && value <= t.critical);
+      t.critical !== undefined && (highCritical ? value >= t.critical : value <= t.critical);
 
     if (breachesCritical) {
       status = 'CRITICAL';

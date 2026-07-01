@@ -1,4 +1,11 @@
-// Orbital Telemetry Platform — Azure infra (Bicep alternative to Terraform).
+// Orbital Telemetry Platform — Azure infra (Bicep REFERENCE alternative).
+//
+// NOTE: Terraform (infra/terraform/) is the authoritative, deployed IaC stack — it holds
+// the live state and is what CI/CD applies. This Bicep file is a smaller ARM-native
+// reference showing the same core resources; it intentionally omits the budget, Key Vault
+// secrets/identity, mongo database, and Container App wiring present in Terraform. Use
+// Terraform for real deployments.
+//
 // Deploy into an existing resource group:
 //   az group create -n otp-dev-rg -l eastus
 //   az deployment group create -g otp-dev-rg -f infra/bicep/main.bicep

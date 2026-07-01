@@ -5,12 +5,16 @@ import http from 'node:http';
 import express from 'express';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
+import { initTelemetry } from '@otp/shared/telemetry';
 import { config } from '@otp/shared/config';
 import { createLogger } from '@otp/shared/logger';
+
+await initTelemetry('alert-service');
 import { createMetrics, metricsHandler } from '@otp/shared/metrics';
 import { AlertSchema } from '@otp/shared/schemas';
 import { createConsumer } from '@otp/shared/db/kafka';
 import { connectMongo, models } from '@otp/shared/db/mongo';
+import { recordFailure, disconnectNeo4j } from '@otp/shared/db/neo4j';
 
 const log = createLogger('alert-service');
 const metrics = createMetrics('alert-service');
@@ -74,12 +78,20 @@ await consumer.run({
 
       // A critical breach is logged as a failure event against the responsible module.
       if (alert.severity === 'critical') {
+        const module = TYPE_TO_MODULE[alert.type] || alert.type;
         await models.FailureEvent.create({
           satelliteId: alert.satelliteId,
-          module: TYPE_TO_MODULE[alert.type] || alert.type,
+          module,
           cause: alert.message,
           ts: new Date(alert.ts),
         });
+        // Mirror into the graph (FailureEvent)-[:AFFECTS]->(Module) for fault-tree queries.
+        // Non-fatal: a graph error must never block alert persistence/broadcast.
+        try {
+          await recordFailure({ satelliteId: alert.satelliteId, module, cause: alert.message, ts: alert.ts });
+        } catch (err) {
+          log.error({ err: err.message }, 'failed to record failure in graph');
+        }
       }
 
       broadcast({ ...alert, _id: saved._id });
@@ -96,6 +108,7 @@ server.listen(config.api.alertPort, () =>
 
 const shutdown = async () => {
   await consumer.disconnect();
+  await disconnectNeo4j();
   server.close();
   process.exit(0);
 };

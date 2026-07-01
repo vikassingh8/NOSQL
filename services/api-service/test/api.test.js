@@ -26,4 +26,15 @@ describe('api-service', () => {
     const res = await request(app).post('/auth/login').send({ username: '' });
     expect(res.status).toBe(400);
   });
+
+  it('PATCH /alerts/:id/ack without token returns 401', async () => {
+    const res = await request(app).patch('/alerts/abc123/ack');
+    expect(res.status).toBe(401);
+  });
+
+  it('serves the OpenAPI spec at /openapi.json', async () => {
+    const res = await request(app).get('/openapi.json');
+    expect(res.status).toBe(200);
+    expect(res.body.openapi).toMatch(/^3\./);
+  });
 });

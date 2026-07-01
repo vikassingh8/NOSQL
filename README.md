@@ -55,7 +55,7 @@ cd frontend && npm install && npm run dev
 | What | URL | Notes |
 |------|-----|-------|
 | Dashboard | http://localhost:5173 | login: `mission` / `mission123` |
-| API | http://localhost:4000 | `/healthz`, `/metrics` |
+| API | http://localhost:4000 | `/healthz`, `/metrics`, `/docs` (Swagger UI) |
 | Alert service | http://localhost:4100 | `/ws/alerts`, `/alerts/stream` |
 | Grafana | http://localhost:3001 | admin / admin |
 | Prometheus | http://localhost:9090 | |
@@ -94,8 +94,15 @@ curl -s localhost:4000/failures -H "Authorization: Bearer <TOKEN>"
 
 # Recent alerts (the simulator injects ~5% anomalies)
 curl -s localhost:4000/alerts -H "Authorization: Bearer <TOKEN>"
+
+# Acknowledge an alert (mission-ops only) — use an _id from the /alerts response
+curl -s -X PATCH localhost:4000/alerts/<ALERT_ID>/ack -H "Authorization: Bearer <TOKEN>"
 ```
 Open Grafana → **Orbital Telemetry — Overview** to watch ingestion rate, alerts, and latency.
+
+**Interactive API docs:** the full OpenAPI 3.1 spec lives in
+[`docs/api/openapi.yaml`](docs/api/openapi.yaml) and is served as Swagger UI at
+http://localhost:4000/docs (raw JSON at `/openapi.json`).
 
 ## Tests
 ```bash

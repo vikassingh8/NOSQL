@@ -2,7 +2,6 @@ import { createClient } from 'redis';
 import { config } from '../config.js';
 
 let client;
-let subscriber;
 
 export async function getRedis() {
   if (client?.isOpen) return client;
@@ -11,17 +10,6 @@ export async function getRedis() {
   await client.connect();
   return client;
 }
-
-// A dedicated connection for pub/sub subscriptions (Redis requires a separate one)
-export async function getSubscriber() {
-  if (subscriber?.isOpen) return subscriber;
-  subscriber = createClient({ url: config.redis.url });
-  subscriber.on('error', (err) => console.error('[redis-sub] error', err.message));
-  await subscriber.connect();
-  return subscriber;
-}
-
-export const ALERT_CHANNEL = 'alerts:channel';
 
 // ─── Health status helpers (key-value model) ─────────────────────────────────
 export const keys = {
@@ -59,12 +47,6 @@ export async function listSatellites() {
   return c.sMembers(keys.satSet());
 }
 
-export async function publishAlert(alert) {
-  const c = await getRedis();
-  await c.publish(ALERT_CHANNEL, JSON.stringify(alert));
-}
-
 export async function disconnectRedis() {
   if (client?.isOpen) await client.quit();
-  if (subscriber?.isOpen) await subscriber.quit();
 }

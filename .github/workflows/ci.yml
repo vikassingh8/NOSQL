@@ -49,3 +49,44 @@ jobs:
           terraform fmt -check -recursive
           terraform init -backend=false
           terraform validate
+
+  # ─── Manual deploy to Azure ───────────────────────────────────────────────
+  # Triggered by hand (workflow_dispatch) to avoid surprise Azure spend.
+  # Requires these repo secrets:
+  #   AZURE_CREDENTIALS  – output of `az ad sp create-for-rbac --sdk-auth`
+  #   ACR_LOGIN_SERVER   – e.g. otpacr.azurecr.io
+  #   ACR_USERNAME / ACR_PASSWORD – ACR admin creds (or use OIDC)
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-test, docker-build, terraform-validate]
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+
+      - name: Build & push images
+        run: |
+          for svc in ingestion-service api-service alert-service satellite-simulator; do
+            img="${{ secrets.ACR_LOGIN_SERVER }}/otp-$svc:${{ github.sha }}"
+            docker build -f services/$svc/Dockerfile -t "$img" .
+            docker push "$img"
+          done
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform apply
+        working-directory: infra/terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="container_registry=${{ secrets.ACR_LOGIN_SERVER }}" \
+            -var="image_tag=${{ github.sha }}" \
+            -var="deploy_container_apps=true"

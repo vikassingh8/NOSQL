@@ -1,0 +1,53 @@
+groups:
+  - name: telemetry-platform
+    rules:
+      # Ingestion has stalled — no packets processed in the last 5 minutes while a
+      # scrape target is up (simulator/ingestion likely down or Kafka broken).
+      - alert: IngestionStalled
+        expr: sum(rate(telemetry_ingested_total[5m])) == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Telemetry ingestion has stalled"
+          description: "No telemetry packets ingested in the last 5m. Check ingestion-service, simulator, and Kafka."
+
+      # Elevated ingestion error rate (validation/storage/parse failures).
+      - alert: HighIngestErrorRate
+        expr: sum(rate(telemetry_ingest_errors_total[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High telemetry ingest error rate"
+          description: "Ingest errors > 1/s over 10m. Inspect ingest_errors reason labels (validation/storage/parse)."
+
+      # API p95 latency degradation.
+      - alert: ApiHighLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_seconds_bucket{service="api-service"}[5m])) by (le)) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "API p95 latency is high"
+          description: "api-service p95 request latency > 1s over 10m."
+
+      # Surge in critical alerts — likely a real mission event or a misbehaving sensor.
+      - alert: CriticalAlertSurge
+        expr: sum(rate(alerts_emitted_total{severity="critical"}[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Surge in critical telemetry alerts"
+          description: "Critical alerts emitted > 0.5/s over 5m. Check satellite health and failure events."
+
+      # A metrics target is down (service crashed or unreachable).
+      - alert: ServiceTargetDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Metrics target {{ $labels.job }} is down"
+          description: "Prometheus cannot scrape {{ $labels.job }} ({{ $labels.instance }}) for 2m."

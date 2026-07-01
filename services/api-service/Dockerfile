@@ -9,6 +9,8 @@ RUN npm install --omit=dev --workspaces --include-workspace-root || npm install 
 
 COPY services/shared services/shared
 COPY services/api-service services/api-service
+# OpenAPI spec served at /docs (Swagger UI)
+COPY docs/api docs/api
 
 EXPOSE 4000
 CMD ["node", "services/api-service/src/index.js"]

@@ -1,7 +1,10 @@
 // Satellite telemetry simulator — publishes realistic JSON packets to Kafka.
+import { initTelemetry } from '@otp/shared/telemetry';
 import { createProducer } from '@otp/shared/db/kafka';
 import { config, THRESHOLDS } from '@otp/shared/config';
 import { createLogger } from '@otp/shared/logger';
+
+await initTelemetry('satellite-simulator');
 
 const log = createLogger('simulator');
 

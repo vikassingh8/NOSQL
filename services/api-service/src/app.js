@@ -1,9 +1,13 @@
 // Express app factory (exported so tests can mount it without binding a port).
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import bcrypt from 'bcryptjs';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yaml';
 import { config } from '@otp/shared/config';
 import { createLogger } from '@otp/shared/logger';
 import { createMetrics, metricsMiddleware, metricsHandler } from '@otp/shared/metrics';
@@ -16,9 +20,25 @@ import { impactAnalysis, dependencyGraph } from '@otp/shared/db/neo4j';
 
 const log = createLogger('api-service');
 
+// Load the OpenAPI spec once at module load. Optional: if the docs file isn't
+// shipped (e.g. a slim container image), we simply skip serving Swagger UI.
+let openapiDoc;
+try {
+  const specPath = fileURLToPath(new URL('../../../docs/api/openapi.yaml', import.meta.url));
+  openapiDoc = YAML.parse(readFileSync(specPath, 'utf8'));
+} catch {
+  openapiDoc = null;
+}
+
 export function createApp() {
   const app = express();
   const metrics = createMetrics('api-service');
+
+  // Swagger UI mounted before helmet so its inline assets aren't blocked by CSP.
+  if (openapiDoc) {
+    app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiDoc));
+    app.get('/openapi.json', (_req, res) => res.json(openapiDoc));
+  }
 
   app.use(helmet());
   app.use(cors());
@@ -132,6 +152,22 @@ export function createApp() {
     const filter = req.query.satelliteId ? { satelliteId: req.query.satelliteId } : {};
     const alerts = await models.Alert.find(filter).sort({ ts: -1 }).limit(limit).lean();
     res.json({ count: alerts.length, alerts });
+  });
+
+  // Acknowledge an alert (mission-ops): records who acknowledged it and when.
+  app.patch('/alerts/:id/ack', requireRole('mission-ops'), audit('ack-alert'), async (req, res) => {
+    let alert;
+    try {
+      alert = await models.Alert.findByIdAndUpdate(
+        req.params.id,
+        { acknowledged: true, ackedBy: req.user?.username, ackedAt: new Date() },
+        { new: true }
+      ).lean();
+    } catch {
+      return res.status(400).json({ error: 'Invalid alert id' });
+    }
+    if (!alert) return res.status(404).json({ error: 'Alert not found' });
+    res.json({ alert });
   });
 
   app.use((err, _req, res, _next) => {

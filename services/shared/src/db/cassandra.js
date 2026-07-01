@@ -3,21 +3,33 @@ import { config } from '../config.js';
 
 let client;
 
-// Connect without a keyspace (used by the seed/DDL bootstrap)
-export function rawClient() {
-  return new cassandra.Client({
+// Build driver options, adding port/TLS/auth only when configured (managed
+// Cassandra such as Azure Cosmos DB Cassandra API). Local Cassandra omits them.
+function clientOptions(extra = {}) {
+  const opts = {
     contactPoints: config.cassandra.contactPoints,
     localDataCenter: config.cassandra.localDataCenter,
-  });
+    ...extra,
+  };
+  if (config.cassandra.port) opts.protocolOptions = { port: config.cassandra.port };
+  if (config.cassandra.ssl) opts.sslOptions = { rejectUnauthorized: false };
+  if (config.cassandra.username && config.cassandra.password) {
+    opts.authProvider = new cassandra.auth.PlainTextAuthProvider(
+      config.cassandra.username,
+      config.cassandra.password
+    );
+  }
+  return opts;
+}
+
+// Connect without a keyspace (used by the seed/DDL bootstrap)
+export function rawClient() {
+  return new cassandra.Client(clientOptions());
 }
 
 export async function getCassandra() {
   if (client) return client;
-  client = new cassandra.Client({
-    contactPoints: config.cassandra.contactPoints,
-    localDataCenter: config.cassandra.localDataCenter,
-    keyspace: config.cassandra.keyspace,
-  });
+  client = new cassandra.Client(clientOptions({ keyspace: config.cassandra.keyspace }));
   await client.connect();
   return client;
 }

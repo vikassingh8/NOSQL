@@ -34,6 +34,22 @@ export async function impactAnalysis(satelliteId, moduleName) {
   return rows[0] || { failedModule: moduleName, affectedModules: [] };
 }
 
+// Record a failure in the graph: create a FailureEvent node and link it to the
+// responsible module via AFFECTS, so fault-tree queries can traverse from failures.
+export async function recordFailure({ satelliteId, module, cause, ts }) {
+  const query = `
+    MERGE (m:Module {name: $module})
+    CREATE (f:FailureEvent {satelliteId: $satelliteId, cause: $cause, ts: $ts})
+    MERGE (f)-[:AFFECTS]->(m)
+    RETURN f.ts AS ts`;
+  return runCypher(query, {
+    satelliteId,
+    module,
+    cause,
+    ts: (ts instanceof Date ? ts : new Date(ts)).toISOString(),
+  });
+}
+
 // Full dependency graph for a satellite (for dashboard viz)
 export async function dependencyGraph(satelliteId) {
   const query = `

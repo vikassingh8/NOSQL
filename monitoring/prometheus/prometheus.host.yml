@@ -1,0 +1,23 @@
+# Scrape config for the HYBRID run (services on the host, Prometheus in Docker).
+# Uses host.docker.internal so the container can reach host-published metrics ports.
+# The default prometheus.yml (Docker service names) is for the all-in-Docker `apps` profile.
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: ingestion-service
+    static_configs:
+      - targets: ['host.docker.internal:9101']
+  - job_name: api-service
+    static_configs:
+      - targets: ['host.docker.internal:4000']
+  - job_name: alert-service
+    static_configs:
+      - targets: ['host.docker.internal:4100']
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']

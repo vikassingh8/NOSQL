@@ -85,7 +85,11 @@ Kafka provides buffering and at-least-once delivery, so ingestion survives downs
 | `GET /telemetry/:id/aggregate` | windowed avg/min/max per type | MongoDB aggregation |
 | `GET /graph/:id` / `/graph/:id/impact` | dependency / fault-tree | Neo4j |
 | `GET /alerts` | recent alerts | MongoDB |
+| `PATCH /alerts/:id/ack` | acknowledge an alert (records who/when) | MongoDB |
 | `GET /failures` | recorded failure events | MongoDB |
+
+The full contract is documented as an **OpenAPI 3.1 spec** (`docs/api/openapi.yaml`), served
+interactively via Swagger UI at `/docs`.
 
 **Security:** JWT auth, **RBAC** (`mission-ops` / `scientist` / `admin`), bcrypt password hashing,
 `helmet` headers, `express-rate-limit` (429 on abuse), Zod input validation, audit-log collection.
@@ -97,9 +101,10 @@ Kafka provides buffering and at-least-once delivery, so ingestion survives downs
 
 ## 7. Cloud Deployment, Security & Monitoring
 - **Local:** Docker Compose runs all DBs + Kafka + services + Prometheus/Grafana.
-- **Azure (IaC, deploy later):** Terraform + Bicep provision Cosmos DB (Mongo + Cassandra APIs),
-  Azure Cache for Redis, Container Apps, Key Vault, Log Analytics/App Insights, and a cost budget.
-  Neo4j via Aura free tier.
+- **Azure (IaC):** **Terraform** (authoritative, holds live state) provisions Cosmos DB
+  (Mongo + Cassandra APIs), Azure Cache for Redis, Container Apps, Key Vault (+ managed-identity
+  secret access), Log Analytics/App Insights, and a cost budget. A Bicep file is included as a
+  smaller ARM-native reference. Neo4j via Aura free tier.
 - **Scaling:** Cosmos serverless autoscale; Container Apps replicas; Cassandra replication factor;
   Redis as a read cache.
 - **Security:** secrets in Key Vault, TLS in transit, RBAC, encryption at rest (managed).

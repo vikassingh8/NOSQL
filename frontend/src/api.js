@@ -36,6 +36,7 @@ export const api = {
   graph: (id) => req(`/graph/${id}`),
   impact: (id, module) => req(`/graph/${id}/impact?module=${encodeURIComponent(module)}`),
   alerts: (id) => req(`/alerts${id ? `?satelliteId=${id}` : ''}`),
+  ackAlert: (alertId) => req(`/alerts/${alertId}/ack`, { method: 'PATCH' }),
 };
 
 // Live alert stream via SSE (served by alert-service)

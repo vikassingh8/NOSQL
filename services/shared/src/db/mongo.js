@@ -17,7 +17,7 @@ const SatelliteSchema = new Schema(
 
 const SensorSchema = new Schema(
   {
-    _id: String, // e.g. "SAT-01:TEMP-3"
+    _id: String, // e.g. "SAT-01:TEMPERATURE" (satelliteId:TYPE)
     satelliteId: { type: String, index: true },
     type: String,
     unit: String,
@@ -52,6 +52,8 @@ const AlertSchema = new Schema(
     severity: String, // warning | critical
     message: String,
     acknowledged: { type: Boolean, default: false },
+    ackedBy: String,
+    ackedAt: Date,
     ts: { type: Date, index: true },
   },
   { collection: 'alerts' }

@@ -34,6 +34,9 @@ resource "azurerm_cosmosdb_account" "mongo" {
   offer_type          = "Standard"
   kind                = "MongoDB"
 
+  # Mongoose 8 requires wire version 8 (MongoDB 4.2+). Cosmos defaults to 3.6.
+  mongo_server_version = "4.2"
+
   # Free tier: first 1000 RU/s + 25 GB are free (one free-tier account per subscription).
   free_tier_enabled = true
 
@@ -132,6 +135,36 @@ resource "azurerm_key_vault_secret" "redis_conn" {
   key_vault_id = azurerm_key_vault.kv.id
 }
 
+# Strong JWT signing secret, generated + stored in Key Vault (never committed).
+resource "random_password" "jwt" {
+  length  = 48
+  special = false
+}
+
+resource "azurerm_key_vault_secret" "jwt" {
+  name         = "jwt-secret"
+  value        = random_password.jwt.result
+  key_vault_id = azurerm_key_vault.kv.id
+}
+
+# ─── Runtime identity for the microservices ───────────────────────────────────
+# A user-assigned managed identity lets Container Apps pull secrets from Key Vault
+# without any secret in code/env. Using a user-assigned (not system-assigned)
+# identity avoids the create-order cycle between the app and the KV access policy.
+resource "azurerm_user_assigned_identity" "app" {
+  name                = "${local.name}-app-id"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  tags                = local.tags
+}
+
+resource "azurerm_key_vault_access_policy" "app" {
+  key_vault_id       = azurerm_key_vault.kv.id
+  tenant_id          = data.azurerm_client_config.current.tenant_id
+  object_id          = azurerm_user_assigned_identity.app.principal_id
+  secret_permissions = ["Get", "List"]
+}
+
 # ─── Monitoring: Log Analytics + Application Insights ─────────────────────────
 resource "azurerm_log_analytics_workspace" "logs" {
   name                = "${local.name}-logs"
@@ -170,6 +203,23 @@ resource "azurerm_container_app" "api" {
   revision_mode                = "Single"
   tags                         = local.tags
 
+  # Pull secrets from Key Vault via the user-assigned managed identity.
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.app.id]
+  }
+
+  secret {
+    name                = "mongo-uri"
+    key_vault_secret_id = azurerm_key_vault_secret.mongo_conn.id
+    identity            = azurerm_user_assigned_identity.app.id
+  }
+  secret {
+    name                = "jwt-secret"
+    key_vault_secret_id = azurerm_key_vault_secret.jwt.id
+    identity            = azurerm_user_assigned_identity.app.id
+  }
+
   template {
     min_replicas = 1
     max_replicas = 3
@@ -178,8 +228,31 @@ resource "azurerm_container_app" "api" {
       image  = "${var.container_registry}/otp-api-service:${var.image_tag}"
       cpu    = 0.5
       memory = "1Gi"
+
+      env {
+        name  = "NODE_ENV"
+        value = "production"
+      }
+      env {
+        name        = "MONGO_URI"
+        secret_name = "mongo-uri"
+      }
+      env {
+        name  = "MONGO_DB"
+        value = azurerm_cosmosdb_mongo_database.telemetry.name
+      }
+      env {
+        name        = "JWT_SECRET"
+        secret_name = "jwt-secret"
+      }
+      env {
+        name  = "APPLICATIONINSIGHTS_CONNECTION_STRING"
+        value = azurerm_application_insights.appi.connection_string
+      }
     }
   }
+
+  depends_on = [azurerm_key_vault_access_policy.app]
 
   ingress {
     external_enabled = true

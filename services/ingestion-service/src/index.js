@@ -1,16 +1,19 @@
 // Ingestion service:
 //   Kafka(telemetry.raw) → validate(Zod) → normalize → anomaly-detect
-//   → write MongoDB + Cassandra + Redis → emit alerts (Kafka + Redis pub/sub)
+//   → write MongoDB + Cassandra + Redis → emit alerts to Kafka(telemetry.alerts)
 import express from 'express';
+import { initTelemetry } from '@otp/shared/telemetry';
 import { config } from '@otp/shared/config';
 import { createLogger } from '@otp/shared/logger';
+
+await initTelemetry('ingestion-service');
 import { createMetrics, metricsHandler } from '@otp/shared/metrics';
 import { TelemetryPacketSchema } from '@otp/shared/schemas';
 import { evaluate } from '@otp/shared/anomaly';
 import { createConsumer, createProducer } from '@otp/shared/db/kafka';
 import { connectMongo, models } from '@otp/shared/db/mongo';
 import { insertTelemetryTS } from '@otp/shared/db/cassandra';
-import { updateHealth, setSensorLatest, publishAlert } from '@otp/shared/db/redis';
+import { updateHealth, setSensorLatest } from '@otp/shared/db/redis';
 
 const log = createLogger('ingestion-service');
 const metrics = createMetrics('ingestion-service');
@@ -65,7 +68,6 @@ async function handlePacket(raw) {
         topic: config.kafka.alertsTopic,
         messages: [{ key: p.satelliteId, value: JSON.stringify(alert) }],
       });
-      await publishAlert(alert); // real-time fan-out
       metrics.alertsEmitted.inc({ severity, type: p.type });
       log.warn({ alert }, 'alert emitted');
     }

@@ -10,6 +10,8 @@
     "./metrics": "./src/metrics.js",
     "./auth": "./src/auth.js",
     "./schemas": "./src/schemas.js",
+    "./anomaly": "./src/anomaly.js",
+    "./telemetry": "./src/telemetry.js",
     "./db/mongo": "./src/db/mongo.js",
     "./db/redis": "./src/db/redis.js",
     "./db/cassandra": "./src/db/cassandra.js",
@@ -17,6 +19,7 @@
     "./db/kafka": "./src/db/kafka.js"
   },
   "dependencies": {
+    "applicationinsights": "^3.4.0",
     "cassandra-driver": "^4.7.2",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",

@@ -24,6 +24,12 @@ export const config = {
     contactPoints: list(process.env.CASSANDRA_CONTACT_POINTS, ['localhost']),
     localDataCenter: process.env.CASSANDRA_LOCAL_DC || 'datacenter1',
     keyspace: process.env.CASSANDRA_KEYSPACE || 'telemetry',
+    // Managed Cassandra (e.g. Azure Cosmos DB Cassandra API) needs a custom
+    // port, TLS, and username/password auth. Left unset for local Cassandra.
+    port: process.env.CASSANDRA_PORT ? num(process.env.CASSANDRA_PORT) : undefined,
+    username: process.env.CASSANDRA_USERNAME || undefined,
+    password: process.env.CASSANDRA_PASSWORD || undefined,
+    ssl: /^true$/i.test(process.env.CASSANDRA_SSL || ''),
   },
 
   neo4j: {
@@ -55,6 +61,17 @@ export const config = {
     anomalyRate: num(process.env.SIM_ANOMALY_RATE, 0.05),
   },
 };
+
+// Fail fast in production if security-critical secrets are left at their dev defaults.
+// In the cloud these come from Key Vault / GitHub secrets, never from committed defaults.
+if (config.env === 'production') {
+  const weak = [];
+  if (config.api.jwtSecret === 'dev-secret-change-me') weak.push('JWT_SECRET');
+  if (config.neo4j.password === 'password123') weak.push('NEO4J_PASSWORD');
+  if (weak.length) {
+    throw new Error(`Refusing to start in production with default secrets: ${weak.join(', ')}`);
+  }
+}
 
 // Per-sensor-type operating thresholds (used for anomaly detection + alerts)
 export const THRESHOLDS = {

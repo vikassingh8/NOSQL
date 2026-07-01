@@ -1,0 +1,397 @@
+openapi: 3.1.0
+info:
+  title: Orbital Telemetry Platform API
+  version: 1.0.0
+  description: >
+    Mission-control REST API for the Orbital Telemetry Platform. Serves live
+    satellite health (Redis), queryable telemetry (MongoDB), long-term history
+    (Cassandra), fault-tree dependency graphs (Neo4j), and alerts. All routes
+    except `/healthz`, `/metrics`, `/docs`, and `/auth/login` require a Bearer
+    JWT obtained from `/auth/login`. Role-restricted routes list their allowed
+    roles; the `admin` role bypasses all role checks.
+servers:
+  - url: http://localhost:4000
+    description: Local development
+tags:
+  - name: Auth
+  - name: Satellites
+  - name: Telemetry
+  - name: Graph
+  - name: Alerts
+  - name: Failures
+  - name: Ops
+paths:
+  /healthz:
+    get:
+      tags: [Ops]
+      summary: Liveness probe
+      security: []
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  service: { type: string, example: api }
+  /metrics:
+    get:
+      tags: [Ops]
+      summary: Prometheus metrics (text exposition format)
+      security: []
+      responses:
+        '200':
+          description: Metrics
+          content:
+            text/plain: {}
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Obtain a JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, example: mission }
+                password: { type: string, example: mission123 }
+      responses:
+        '200':
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  role: { type: string, enum: [mission-ops, scientist, admin] }
+                  expiresIn: { type: string, example: 1h }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /satellites:
+    get:
+      tags: [Satellites]
+      summary: List satellites (live set from Redis + catalog from MongoDB)
+      responses:
+        '200':
+          description: Satellite list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  live:
+                    type: array
+                    items: { type: string }
+                  catalog:
+                    type: array
+                    items: { $ref: '#/components/schemas/Satellite' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /satellites/{id}/health:
+    get:
+      tags: [Satellites]
+      summary: Live health snapshot for a satellite (Redis)
+      parameters:
+        - $ref: '#/components/parameters/SatelliteId'
+      responses:
+        '200':
+          description: Live health hash
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satelliteId: { type: string }
+                  health: { type: object, additionalProperties: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /telemetry/{id}/snapshot:
+    get:
+      tags: [Telemetry]
+      summary: Most recent telemetry docs (MongoDB)
+      description: 'Roles: scientist, mission-ops'
+      parameters:
+        - $ref: '#/components/parameters/SatelliteId'
+      responses:
+        '200':
+          description: Recent telemetry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satelliteId: { type: string }
+                  recent:
+                    type: array
+                    items: { $ref: '#/components/schemas/Telemetry' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /telemetry/{id}/history:
+    get:
+      tags: [Telemetry]
+      summary: Time-series history for a sensor (Cassandra)
+      description: 'Roles: scientist, mission-ops'
+      parameters:
+        - $ref: '#/components/parameters/SatelliteId'
+        - name: sensorId
+          in: query
+          required: true
+          schema: { type: string, example: 'SAT-01:TEMPERATURE' }
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 100 }
+      responses:
+        '200':
+          description: History rows
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satelliteId: { type: string }
+                  sensorId: { type: string }
+                  count: { type: integer }
+                  rows: { type: array, items: { type: object, additionalProperties: true } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /telemetry/{id}/aggregate:
+    get:
+      tags: [Telemetry]
+      summary: Aggregated per-sensor-type stats over a recent window (MongoDB)
+      description: 'Roles: scientist, mission-ops'
+      parameters:
+        - $ref: '#/components/parameters/SatelliteId'
+        - name: minutes
+          in: query
+          schema: { type: integer, default: 60, maximum: 1440 }
+      responses:
+        '200':
+          description: Aggregate summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satelliteId: { type: string }
+                  windowMinutes: { type: integer }
+                  summary:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type: { type: string }
+                        count: { type: integer }
+                        avg: { type: number }
+                        min: { type: number }
+                        max: { type: number }
+                        lastStatus: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /failures:
+    get:
+      tags: [Failures]
+      summary: Recent failure events (MongoDB)
+      description: 'Roles: mission-ops'
+      parameters:
+        - name: satelliteId
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Failure events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  failures:
+                    type: array
+                    items: { $ref: '#/components/schemas/FailureEvent' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /graph/{id}:
+    get:
+      tags: [Graph]
+      summary: Component dependency graph for a satellite (Neo4j)
+      description: 'Roles: scientist, mission-ops'
+      parameters:
+        - $ref: '#/components/parameters/SatelliteId'
+      responses:
+        '200':
+          description: Dependency graph
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  satelliteId: { type: string }
+                  graph: { type: array, items: { type: object, additionalProperties: true } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /graph/{id}/impact:
+    get:
+      tags: [Graph]
+      summary: Fault-tree impact analysis for a failed module (Neo4j)
+      description: 'Roles: scientist, mission-ops'
+      parameters:
+        - $ref: '#/components/parameters/SatelliteId'
+        - name: module
+          in: query
+          required: true
+          schema: { type: string, example: PowerBus }
+      responses:
+        '200':
+          description: Impacted modules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  failedModule: { type: string }
+                  affectedModules: { type: array, items: { type: string } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: Recent alerts (MongoDB)
+      description: 'Roles: mission-ops'
+      parameters:
+        - name: satelliteId
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 500 }
+      responses:
+        '200':
+          description: Alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count: { type: integer }
+                  alerts:
+                    type: array
+                    items: { $ref: '#/components/schemas/Alert' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /alerts/{id}/ack:
+    patch:
+      tags: [Alerts]
+      summary: Acknowledge an alert
+      description: 'Roles: mission-ops'
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Acknowledged alert
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alert: { $ref: '#/components/schemas/Alert' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    SatelliteId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, example: SAT-01 }
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Unauthorized:
+      description: Missing or invalid token
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Role not permitted
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    Satellite:
+      type: object
+      properties:
+        _id: { type: string, example: SAT-01 }
+        name: { type: string }
+        orbit: { type: string }
+        launchedAt: { type: string, format: date-time }
+        status: { type: string }
+    Telemetry:
+      type: object
+      properties:
+        satelliteId: { type: string }
+        sensorId: { type: string }
+        type: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        status: { type: string, enum: [NOMINAL, WARNING, CRITICAL] }
+        ts: { type: string, format: date-time }
+    Alert:
+      type: object
+      properties:
+        _id: { type: string }
+        satelliteId: { type: string }
+        sensorId: { type: string }
+        type: { type: string }
+        value: { type: number }
+        unit: { type: string }
+        severity: { type: string, enum: [warning, critical] }
+        message: { type: string }
+        acknowledged: { type: boolean }
+        ackedBy: { type: string }
+        ackedAt: { type: string, format: date-time }
+        ts: { type: string, format: date-time }
+    FailureEvent:
+      type: object
+      properties:
+        satelliteId: { type: string }
+        module: { type: string }
+        cause: { type: string }
+        ts: { type: string, format: date-time }
+security:
+  - bearerAuth: []
