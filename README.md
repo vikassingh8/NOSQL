@@ -4,15 +4,14 @@ A **multi-model, cloud-native NoSQL** platform that ingests real-time satellite 
 processes it, stores it across **MongoDB + Redis + Cassandra + Neo4j** (via **Kafka**), and serves
 analytics + real-time alerts to a mission-control dashboard.
 
-> Capstone project. Runs **fully locally on Docker** (free). Azure IaC (Terraform + Bicep) is
-> included and ready to deploy later. See `docs/capstone-report.md` for the full write-up.
+> Capstone project. Runs **fully locally on Docker**, and deploys to **Azure** via Terraform
+> (managed Cosmos DB, Redis, Event Hubs, Key Vault, App Insights + an all-in-one VM).
 
 ## Architecture at a glance
 
 ![Logical architecture](docs/architecture/logical-architecture.svg)
 
 More diagrams: `docs/architecture/README.md` · Schemas: `docs/schemas/README.md`
-· ✅ [Requirements compliance](docs/requirements-compliance.md)
 
 ## Tech stack
 Node.js 22 · Express 5 · MongoDB 8 · Redis 7 · Cassandra 5 · Neo4j 5 · Kafka (KRaft) ·
@@ -118,7 +117,7 @@ terraform init
 terraform plan        # review
 terraform apply       # provisions Azure resources
 ```
-Bicep alternative in `infra/bicep/`. Cost guardrails in `docs/cost-strategy.md`.
+Bicep alternative in `infra/bicep/`. A consumption budget with alerts is defined in `infra/terraform/budget.tf`.
 
 ## Repository layout
 ```

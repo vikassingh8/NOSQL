@@ -63,4 +63,3 @@ This deletes everything in `otp-dev-rg`.
 ## Cost safety
 - `budget.tf` emails you at 80% actual / 100% forecast of the monthly budget (default $50).
 - Run `terraform destroy` whenever you're not demoing.
-- See `docs/cost-strategy.md` for the full strategy.

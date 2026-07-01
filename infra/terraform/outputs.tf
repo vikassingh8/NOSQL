@@ -43,3 +43,8 @@ output "vm_admin_password" {
   value     = var.deploy_vm ? random_password.vm_admin[0].result : "not-deployed"
   sensitive = true
 }
+
+output "vm_neo4j_password" {
+  value     = var.deploy_vm ? random_password.neo4j[0].result : "not-deployed"
+  sensitive = true
+}

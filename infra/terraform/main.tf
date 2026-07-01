@@ -8,7 +8,7 @@
 #   Secrets  → Azure Key Vault
 #   Monitor  → Log Analytics + Application Insights
 #   Cost     → Consumption budget with email alerts
-# Neo4j is provisioned separately via Neo4j Aura (see docs/cost-strategy.md).
+# Neo4j runs as a container (locally and on the all-in-one VM); Neo4j Aura is the managed option.
 # ──────────────────────────────────────────────────────────────────────────────
 
 locals {
