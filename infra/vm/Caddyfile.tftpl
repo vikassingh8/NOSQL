@@ -1,0 +1,30 @@
+# TLS gateway for the Orbital Telemetry VM.
+# Serves the dashboard (frontend) and proxies the API + alert streams.
+# Uses Caddy's internal CA to issue a self-signed cert for the public IP (HTTPS).
+https://${public_ip} {
+	tls internal
+
+	handle_path /api/* {
+		reverse_proxy api-service:4000
+	}
+
+	handle_path /alerts-api/* {
+		reverse_proxy alert-service:4100
+	}
+
+	# Swagger UI + spec are served by the API at its root paths.
+	handle /docs* {
+		reverse_proxy api-service:4000
+	}
+	handle /openapi.json {
+		reverse_proxy api-service:4000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+http://${public_ip} {
+	redir https://${public_ip}{uri} permanent
+}

@@ -15,6 +15,7 @@ import { AlertSchema } from '@otp/shared/schemas';
 import { createConsumer } from '@otp/shared/db/kafka';
 import { connectMongo, models } from '@otp/shared/db/mongo';
 import { recordFailure, disconnectNeo4j } from '@otp/shared/db/neo4j';
+import { cacheAlert, disconnectRedis } from '@otp/shared/db/redis';
 
 const log = createLogger('alert-service');
 const metrics = createMetrics('alert-service');
@@ -76,6 +77,13 @@ await consumer.run({
       const saved = await models.Alert.create({ ...alert, ts: new Date(alert.ts) });
       metrics.alertsEmitted.inc({ severity: alert.severity, type: alert.type });
 
+      // Ephemeral mission-alert cache in Redis (low-latency live reads).
+      try {
+        await cacheAlert({ ...alert, _id: saved._id });
+      } catch (err) {
+        log.error({ err: err.message }, 'failed to cache alert in redis');
+      }
+
       // A critical breach is logged as a failure event against the responsible module.
       if (alert.severity === 'critical') {
         const module = TYPE_TO_MODULE[alert.type] || alert.type;
@@ -109,6 +117,7 @@ server.listen(config.api.alertPort, () =>
 const shutdown = async () => {
   await consumer.disconnect();
   await disconnectNeo4j();
+  await disconnectRedis();
   server.close();
   process.exit(0);
 };

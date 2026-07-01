@@ -22,3 +22,24 @@ output "app_insights_connection_string" {
   value     = azurerm_application_insights.appi.connection_string
   sensitive = true
 }
+
+output "eventhubs_namespace" {
+  value = var.deploy_eventhubs ? azurerm_eventhub_namespace.ehns[0].name : "not-deployed"
+}
+
+output "vm_dashboard_url" {
+  value = var.deploy_vm ? "https://${azurerm_public_ip.pip[0].ip_address}" : "not-deployed (set deploy_vm=true)"
+}
+
+output "vm_public_ip" {
+  value = var.deploy_vm ? azurerm_public_ip.pip[0].ip_address : "not-deployed"
+}
+
+output "vm_admin_username" {
+  value = var.deploy_vm ? var.vm_admin_username : "not-deployed"
+}
+
+output "vm_admin_password" {
+  value     = var.deploy_vm ? random_password.vm_admin[0].result : "not-deployed"
+  sensitive = true
+}

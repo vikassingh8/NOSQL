@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.git
+.github
+frontend
+docs
+!docs/api
+infra
+monitoring
+*.log
+coverage
+.env
+.env.*
+!.env.example
+**/*.test.js

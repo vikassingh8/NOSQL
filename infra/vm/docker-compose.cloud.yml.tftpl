@@ -1,0 +1,189 @@
+# Cloud stack for the Azure VM — rendered by Terraform (templatefile).
+# Uses prebuilt images from ACR for the app services + public images for the datastores.
+services:
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    volumes: ["mongo-data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cassandra:
+    image: cassandra:5.0
+    restart: unless-stopped
+    environment:
+      CASSANDRA_CLUSTER_NAME: otp-cluster
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 512M
+      HEAP_NEWSIZE: 128M
+    volumes: ["cassandra-data:/var/lib/cassandra"]
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'describe keyspaces' || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
+
+  neo4j:
+    image: neo4j:5.26-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${neo4j_password}
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes: ["neo4j-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  kafka:
+    image: bitnamilegacy/kafka:3.9
+    restart: unless-stopped
+    environment:
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes: ["kafka-data:/bitnami/kafka"]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  ingestion-service:
+    image: ${acr}/otp-ingestion-service:${tag}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: telemetry
+      REDIS_URL: redis://redis:6379
+      CASSANDRA_CONTACT_POINTS: cassandra
+      CASSANDRA_LOCAL_DC: datacenter1
+      CASSANDRA_KEYSPACE: telemetry
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${neo4j_password}
+      KAFKA_BROKERS: kafka:9092
+      JWT_SECRET: ${jwt_secret}
+      APPLICATIONINSIGHTS_CONNECTION_STRING: "${appi}"
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      cassandra: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+
+  api-service:
+    image: ${acr}/otp-api-service:${tag}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: telemetry
+      REDIS_URL: redis://redis:6379
+      CASSANDRA_CONTACT_POINTS: cassandra
+      CASSANDRA_LOCAL_DC: datacenter1
+      CASSANDRA_KEYSPACE: telemetry
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${neo4j_password}
+      JWT_SECRET: ${jwt_secret}
+      APPLICATIONINSIGHTS_CONNECTION_STRING: "${appi}"
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+
+  alert-service:
+    image: ${acr}/otp-alert-service:${tag}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: telemetry
+      REDIS_URL: redis://redis:6379
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${neo4j_password}
+      KAFKA_BROKERS: kafka:9092
+      JWT_SECRET: ${jwt_secret}
+      APPLICATIONINSIGHTS_CONNECTION_STRING: "${appi}"
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_healthy }
+
+  satellite-simulator:
+    image: ${acr}/otp-satellite-simulator:${tag}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      KAFKA_BROKERS: kafka:9092
+      JWT_SECRET: ${jwt_secret}
+    depends_on:
+      kafka: { condition: service_healthy }
+
+  frontend:
+    image: ${acr}/otp-frontend:${tag}
+    restart: unless-stopped
+
+  # One-shot: create Cassandra schema + seed Mongo/Cassandra/Neo4j, then exit.
+  seeder:
+    image: ${acr}/otp-seeder:${tag}
+    restart: "no"
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MONGO_DB: telemetry
+      CASSANDRA_CONTACT_POINTS: cassandra
+      CASSANDRA_LOCAL_DC: datacenter1
+      CASSANDRA_KEYSPACE: telemetry
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${neo4j_password}
+    depends_on:
+      mongo: { condition: service_healthy }
+      cassandra: { condition: service_healthy }
+      neo4j: { condition: service_healthy }
+
+  # TLS gateway: serves the dashboard and proxies /api and /alerts-api.
+  caddy:
+    image: caddy:2.8-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - /opt/otp/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [frontend, api-service, alert-service]
+
+volumes:
+  mongo-data:
+  redis-data:
+  cassandra-data:
+  neo4j-data:
+  kafka-data:
+  caddy-data:

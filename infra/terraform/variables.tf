@@ -51,3 +51,32 @@ variable "deploy_redis" {
   type        = bool
   default     = true
 }
+
+variable "deploy_vm" {
+  description = "Deploy a Linux VM (+ VNet/NSG) running the full stack via docker-compose"
+  type        = bool
+  default     = false
+}
+
+variable "vm_size" {
+  description = "VM size for the all-in-one compute host"
+  type        = string
+  default     = "Standard_B2s"
+}
+
+variable "vm_admin_username" {
+  description = "Admin username for the Linux VM"
+  type        = string
+  default     = "azureuser"
+}
+
+variable "acr_name" {
+  description = "Name of the existing Azure Container Registry holding the service images"
+  type        = string
+  default     = "otpdevacr594"
+}
+variable "deploy_eventhubs" {
+  description = "Provision Azure Event Hubs (managed messaging queue) via IaC"
+  type        = bool
+  default     = true
+}

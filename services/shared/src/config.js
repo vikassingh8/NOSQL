@@ -44,6 +44,14 @@ export const config = {
     telemetryTopic: process.env.KAFKA_TELEMETRY_TOPIC || 'telemetry.raw',
     alertsTopic: process.env.KAFKA_ALERTS_TOPIC || 'telemetry.alerts',
     consumerGroup: process.env.KAFKA_CONSUMER_GROUP || 'ingestion-group',
+    // TLS + SASL for managed Kafka (e.g. Azure Event Hubs Kafka endpoint).
+    // Left unset for local Kafka. For Event Hubs: KAFKA_SSL=true,
+    // KAFKA_SASL_MECHANISM=plain, KAFKA_SASL_USERNAME=$ConnectionString,
+    // KAFKA_SASL_PASSWORD=<namespace connection string>.
+    ssl: /^true$/i.test(process.env.KAFKA_SSL || ''),
+    saslMechanism: process.env.KAFKA_SASL_MECHANISM || undefined,
+    saslUsername: process.env.KAFKA_SASL_USERNAME || undefined,
+    saslPassword: process.env.KAFKA_SASL_PASSWORD || undefined,
   },
 
   api: {

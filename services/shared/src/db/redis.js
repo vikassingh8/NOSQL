@@ -15,6 +15,7 @@ export async function getRedis() {
 export const keys = {
   satHealth: (id) => `sat:${id}:health`,
   sensorLatest: (id) => `sensor:${id}:latest`,
+  satAlerts: (id) => `sat:${id}:alerts`,
   satSet: () => 'satellites:all',
 };
 
@@ -35,6 +36,23 @@ export async function setSensorLatest(sensorId, payload) {
   await c.set(keys.sensorLatest(sensorId), JSON.stringify(payload), {
     EX: config.redis.healthTtl,
   });
+}
+
+// ─── Mission alerts (ephemeral cache, key-value model) ───────────────────────
+// Keeps the most recent alerts per satellite in Redis with a TTL, so mission-ops
+// can read live alerts with low latency without hitting MongoDB.
+export async function cacheAlert(alert) {
+  const c = await getRedis();
+  const key = keys.satAlerts(alert.satelliteId);
+  await c.lPush(key, JSON.stringify(alert));
+  await c.lTrim(key, 0, 19); // keep the latest 20
+  await c.expire(key, config.redis.healthTtl);
+}
+
+export async function getRecentAlerts(satelliteId) {
+  const c = await getRedis();
+  const items = await c.lRange(keys.satAlerts(satelliteId), 0, -1);
+  return items.map((s) => JSON.parse(s));
 }
 
 export async function getHealth(satelliteId) {

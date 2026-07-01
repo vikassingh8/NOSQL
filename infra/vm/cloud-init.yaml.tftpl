@@ -1,0 +1,21 @@
+#cloud-config
+# Bootstraps the Orbital Telemetry stack on the VM: installs Docker, then pulls and
+# runs the full docker-compose stack from ACR.
+write_files:
+  - path: /opt/otp/docker-compose.yml
+    encoding: b64
+    content: ${compose_b64}
+  - path: /opt/otp/Caddyfile
+    encoding: b64
+    content: ${caddy_b64}
+  - path: /opt/otp/.acrpass
+    encoding: b64
+    permissions: '0600'
+    content: ${acr_pass_b64}
+
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - systemctl enable --now docker
+  - cat /opt/otp/.acrpass | docker login ${acr} -u "${acr_user}" --password-stdin
+  - rm -f /opt/otp/.acrpass
+  - cd /opt/otp && docker compose pull && docker compose up -d

@@ -61,6 +61,27 @@ resource "azurerm_cosmosdb_mongo_database" "telemetry" {
   throughput          = 1000 # covered by the free-tier 1000 RU/s allowance → $0
 }
 
+# Telemetry collection with an explicit shard key → horizontal partitioning (sharding).
+# Cosmos automatically replicates each partition 4x within the region (replication),
+# and the account can be switched to autoscale/multi-region as load grows.
+resource "azurerm_cosmosdb_mongo_collection" "telemetry" {
+  name                = "telemetry"
+  resource_group_name = azurerm_resource_group.rg.name
+  account_name        = azurerm_cosmosdb_account.mongo.name
+  database_name       = azurerm_cosmosdb_mongo_database.telemetry.name
+
+  # Shard (partition) key — spreads writes across physical partitions by satellite.
+  shard_key = "satelliteId"
+
+  index {
+    keys   = ["_id"]
+    unique = true
+  }
+  index {
+    keys = ["satelliteId", "ts"]
+  }
+}
+
 # ─── Cosmos DB: Cassandra API (time-series) ───────────────────────────────────
 resource "azurerm_cosmosdb_account" "cassandra" {
   name                = "${local.name}-cass"
