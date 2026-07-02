@@ -126,5 +126,5 @@ frontend/        React + Vite mission-control dashboard
 infra/           Terraform + Bicep (Azure)
 monitoring/      Prometheus + Grafana provisioning
 scripts/         seed scripts (Mongo / Cassandra / Neo4j)
-docs/            architecture diagrams, schemas, OpenAPI spec, phase index, demo script
+docs/            architecture diagrams, schemas, OpenAPI spec, phase index
 ```
