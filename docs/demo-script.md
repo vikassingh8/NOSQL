@@ -72,7 +72,7 @@ curl -s localhost:4000/graph/SAT-01/impact -H "Authorization: Bearer $TOKEN"
 - Open **Grafana → Orbital Telemetry — Overview**: ingestion rate, alert rate, API p95 latency,
   error counts. Point out the Prometheus alert rules (`monitoring/prometheus/alerts.yml`).
 - Show `infra/terraform/budget.tf` + the $50 monthly budget with 80%/100% email alerts, and the
-  cost strategy (`docs/cost-strategy.md`): free-first locally, single-VM in the cloud, destroy-when-idle.
+  cost approach: free-first locally, single-VM in the cloud, destroy-when-idle.
 
 ## Segment 6 — IaC & CI/CD (~1 min)
 - Skim `infra/terraform/` (VM + Cosmos + Event Hubs + Key Vault) and `.github/workflows/ci.yml`
@@ -81,7 +81,7 @@ curl -s localhost:4000/graph/SAT-01/impact -H "Authorization: Bearer $TOKEN"
 
 ## Wrap (~0.5 min)
 - Recap rubric coverage: 4 NoSQL models, real-time ingestion, secure API + alerts, IaC + CI/CD,
-  monitoring + cost control, full documentation. Point to `docs/capstone-report.md`.
+  monitoring + cost control, and the schema/architecture/OpenAPI docs under `docs/`.
 
 ---
 
