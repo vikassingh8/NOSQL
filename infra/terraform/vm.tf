@@ -23,6 +23,12 @@ resource "random_password" "neo4j" {
   special = false
 }
 
+resource "random_password" "grafana" {
+  count   = var.deploy_vm ? 1 : 0
+  length  = 20
+  special = false
+}
+
 # ─── Network (VPC) ────────────────────────────────────────────────────────────
 resource "azurerm_virtual_network" "vnet" {
   count               = var.deploy_vm ? 1 : 0
@@ -133,14 +139,21 @@ resource "azurerm_linux_virtual_machine" "vm" {
     acr_user     = data.azurerm_container_registry.acr[0].admin_username
     acr_pass_b64 = base64encode(data.azurerm_container_registry.acr[0].admin_password)
     compose_b64 = base64encode(templatefile("${path.module}/../vm/docker-compose.cloud.yml.tftpl", {
-      acr            = data.azurerm_container_registry.acr[0].login_server
-      tag            = var.image_tag
-      neo4j_password = random_password.neo4j[0].result
-      jwt_secret     = random_password.jwt.result
-      appi           = azurerm_application_insights.appi.connection_string
+      acr              = data.azurerm_container_registry.acr[0].login_server
+      tag              = var.image_tag
+      neo4j_password   = random_password.neo4j[0].result
+      jwt_secret       = random_password.jwt.result
+      appi             = azurerm_application_insights.appi.connection_string
+      grafana_password = random_password.grafana[0].result
     }))
     caddy_b64 = base64encode(templatefile("${path.module}/../vm/Caddyfile.tftpl", {
       public_ip = azurerm_public_ip.pip[0].ip_address
     }))
+    # Monitoring config shipped to the VM so Prometheus + Grafana run alongside the stack.
+    prometheus_yml_b64   = base64encode(file("${path.module}/../../monitoring/prometheus/prometheus.yml"))
+    prometheus_rules_b64 = base64encode(file("${path.module}/../../monitoring/prometheus/alerts.yml"))
+    grafana_ds_b64       = base64encode(file("${path.module}/../../monitoring/grafana/provisioning/datasources/datasource.yml"))
+    grafana_dashprov_b64 = base64encode(file("${path.module}/../../monitoring/grafana/provisioning/dashboards/dashboards.yml"))
+    grafana_dash_b64     = base64encode(file("${path.module}/../../monitoring/grafana/dashboards/telemetry-overview.json"))
   }))
 }

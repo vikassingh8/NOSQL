@@ -25,7 +25,7 @@ variable "monthly_budget" {
 variable "alert_emails" {
   description = "Emails to notify on budget threshold"
   type        = list(string)
-  default     = ["vikassingh.dnagrowth@gmail.com"]
+  default     = ["singhvikas872@gmail.com"]
 }
 
 variable "container_registry" {

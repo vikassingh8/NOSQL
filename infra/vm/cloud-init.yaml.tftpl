@@ -12,6 +12,21 @@ write_files:
     encoding: b64
     permissions: '0600'
     content: ${acr_pass_b64}
+  - path: /opt/otp/monitoring/prometheus/prometheus.yml
+    encoding: b64
+    content: ${prometheus_yml_b64}
+  - path: /opt/otp/monitoring/prometheus/alerts.yml
+    encoding: b64
+    content: ${prometheus_rules_b64}
+  - path: /opt/otp/monitoring/grafana/provisioning/datasources/datasource.yml
+    encoding: b64
+    content: ${grafana_ds_b64}
+  - path: /opt/otp/monitoring/grafana/provisioning/dashboards/dashboards.yml
+    encoding: b64
+    content: ${grafana_dashprov_b64}
+  - path: /opt/otp/monitoring/grafana/dashboards/telemetry-overview.json
+    encoding: b64
+    content: ${grafana_dash_b64}
 
 runcmd:
   - curl -fsSL https://get.docker.com | sh

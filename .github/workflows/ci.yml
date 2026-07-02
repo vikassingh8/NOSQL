@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch: {} # manual trigger for the Azure deploy job
 
 jobs:
   build-test:
@@ -72,16 +73,24 @@ jobs:
       - name: Log in to ACR
         run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-      - name: Build & push images
+      - name: Set up QEMU (arm64 emulation)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # The Azure VM is Standard_B2ps_v2 (Ampere/arm64), so images must target linux/arm64.
+      - name: Build & push ARM64 images
         run: |
           for svc in ingestion-service api-service alert-service satellite-simulator; do
             img="${{ secrets.ACR_LOGIN_SERVER }}/otp-$svc:${{ github.sha }}"
-            docker build -f services/$svc/Dockerfile -t "$img" .
-            docker push "$img"
+            docker buildx build --platform linux/arm64 \
+              -f services/$svc/Dockerfile -t "$img" --push .
           done
 
       - uses: hashicorp/setup-terraform@v3
 
+      # Apply the VM model (matches terraform.tfvars): single ARM64 VM running the full stack.
       - name: Terraform apply
         working-directory: infra/terraform
         run: |
@@ -89,4 +98,4 @@ jobs:
           terraform apply -auto-approve \
             -var="container_registry=${{ secrets.ACR_LOGIN_SERVER }}" \
             -var="image_tag=${{ github.sha }}" \
-            -var="deploy_container_apps=true"
+            -var="deploy_vm=true"
