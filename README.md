@@ -1,23 +1,21 @@
-# 🛰️ Orbital Telemetry Platform
+# Orbital Telemetry Platform
 
-A **multi-model, cloud-native NoSQL** platform that ingests real-time satellite telemetry,
-processes it, stores it across **MongoDB + Redis + Cassandra + Neo4j** (via **Kafka**), and serves
-analytics + real-time alerts to a mission-control dashboard.
+A capstone project: a multi-model NoSQL platform that ingests real-time satellite telemetry,
+processes it, and stores it across MongoDB, Redis, Cassandra and Neo4j using Kafka, then serves
+analytics and real-time alerts to a mission-control dashboard.
 
-> Capstone project. Runs **fully locally on Docker**, and deploys to **Azure** via Terraform
-> (managed Cosmos DB, Redis, Event Hubs, Key Vault, App Insights + an all-in-one VM).
+It runs locally on Docker and can be deployed to Azure with Terraform (Cosmos DB, Redis,
+Event Hubs, Key Vault, App Insights, and an all-in-one VM).
 
-## Architecture at a glance
+## Architecture
 
 ![Logical architecture](docs/architecture/logical-architecture.svg)
 
-More diagrams: `docs/architecture/README.md` · Schemas: `docs/schemas/README.md`
+More diagrams are in `docs/architecture/`; the data models are in `docs/schemas/`.
 
 ## Tech stack
-Node.js 22 · Express 5 · MongoDB 8 · Redis 7 · Cassandra 5 · Neo4j 5 · Kafka (KRaft) ·
-Zod · JWT · Prometheus + Grafana · React 19 + Vite · Terraform + Bicep · GitHub Actions · Docker
-
----
+Node.js 22, Express 5, MongoDB 8, Redis 7, Cassandra 5, Neo4j 5, Kafka (KRaft), Zod, JWT,
+Prometheus + Grafana, React 19 + Vite, Terraform + Bicep, GitHub Actions, Docker.
 
 ## Prerequisites
 - **Docker Desktop** (required)
@@ -67,8 +65,6 @@ cd frontend && npm install && npm run dev
 | mission | mission123 | mission-ops |
 | scientist | science123 | scientist |
 | admin | admin123 | admin |
-
----
 
 ## Verify it works
 ```bash

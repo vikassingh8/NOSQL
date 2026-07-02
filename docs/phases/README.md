@@ -1,8 +1,7 @@
-# Project Phases — Deliverable Index
+# Project Phases
 
-The capstone was built in the six prescribed phases. Content is organized by topic
-across the repo rather than duplicated per phase; this index maps each phase to where
-its deliverables live so reviewers can navigate straight to them.
+The project was built in the six prescribed phases. This table maps each phase to where
+its deliverables live in the repo.
 
 | Phase | Deliverables | Where to find them |
 |-------|--------------|--------------------|

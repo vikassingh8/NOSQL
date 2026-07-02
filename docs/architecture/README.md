@@ -1,6 +1,6 @@
 # Architecture Diagrams
 
-SVG diagrams (scalable, print-friendly — open directly or embed in the report/slides).
+Open these SVGs directly, or drop them into slides.
 
 ## Logical architecture
 How telemetry flows from satellites through Kafka and the ingestion service into the four NoSQL

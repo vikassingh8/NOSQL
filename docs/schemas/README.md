@@ -37,17 +37,16 @@ Indexes: `{ satelliteId: 1, ts: -1 }`, `{ type: 1, ts: -1 }`.
 
 ---
 
-## 2. Redis (Key-Value) — live health, alerts, rate-limit
+## 2. Redis (Key-Value) — live health & recent alerts
 
-**Why:** sub-millisecond reads for "current state" + ephemeral TTL data. Not a system of record.
+**Why:** sub-millisecond reads for "current state" plus ephemeral TTL data. Not a system of record.
 
 | Key | Type | Contents | TTL |
 |-----|------|----------|-----|
 | `sat:{id}:health` | HASH | `{ temperature, battery, ..., status, lastSeen }` | 120s |
 | `sensor:{id}:latest` | STRING (JSON) | last full packet | 120s |
+| `sat:{id}:alerts` | LIST | recent alerts per satellite (capped) | 120s |
 | `satellites:all` | SET | known satellite ids | — |
-| `alerts:channel` | Pub/Sub | live alert fan-out to alert-service | — |
-| `ratelimit:{ip}` | counter | express-rate-limit window | window |
 
 ---
 
